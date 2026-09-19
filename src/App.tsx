@@ -88,10 +88,7 @@ export default function App() {
       {/* Header mejorado visualmente */}
       <header className="bg-white border-b-2 border-seviai-red p-4 flex justify-between items-center shadow-sm">
         <div className="flex items-center gap-4">
-          {/* Aquí cargaremos tu logo si pones un logo.png en la carpeta public */}
-          <div className="bg-seviai-red text-white w-10 h-10 flex items-center justify-center font-bold text-xl rounded shadow-sm">
-            S
-          </div>
+          <img src="/simbolo.png" alt="SeviAI" className="w-10 h-10 object-contain drop-shadow-sm" />
           <div>
             <h1 className="font-bold text-2xl text-black tracking-tight">Asistente Visual</h1>
             <p className="text-xs text-gray-500 font-medium tracking-wider uppercase">SeviAI - Centro de Control</p>
