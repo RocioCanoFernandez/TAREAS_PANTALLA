@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Mic, CheckSquare, Square, Plus, Loader2 } from 'lucide-react';
 import { fetchBoardData, toggleSubtarea } from './lib/airtable';
 import type { Tarea } from './lib/airtable';
