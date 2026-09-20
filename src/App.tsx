@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Mic, CheckSquare, Square, Plus, Loader2 } from 'lucide-react';
-import { fetchBoardData, toggleSubtarea, createSubtareaManual } from './lib/airtable';
+import { fetchBoardData, toggleSubtarea, createSubtareaManual, createTareaManual } from './lib/airtable';
 import type { Tarea } from './lib/airtable';
 
 export default function App() {
@@ -13,6 +13,12 @@ export default function App() {
   const [addingSubtaskTo, setAddingSubtaskTo] = useState<string | null>(null);
   const [newSubtaskName, setNewSubtaskName] = useState("");
   const [isAddingSubtask, setIsAddingSubtask] = useState(false);
+
+  // Estado para la creación manual de tareas
+  const [addingTaskTo, setAddingTaskTo] = useState<string | null>(null);
+  const [newTaskName, setNewTaskName] = useState("");
+  const [isAddingTask, setIsAddingTask] = useState(false);
+
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
@@ -58,6 +64,25 @@ export default function App() {
       alert("Error al crear la subtarea. Revisa tu conexión a Airtable.");
     } finally {
       setIsAddingSubtask(false);
+    }
+  };
+
+  const handleCreateTask = async (proyecto: string) => {
+    if (!newTaskName.trim()) {
+      setAddingTaskTo(null);
+      return;
+    }
+    setIsAddingTask(true);
+    try {
+      await createTareaManual(newTaskName, proyecto);
+      setNewTaskName("");
+      setAddingTaskTo(null);
+      await cargarDatos();
+    } catch (err) {
+      console.error(err);
+      alert("Error al crear la tarea. Revisa tu conexión a Airtable.");
+    } finally {
+      setIsAddingTask(false);
     }
   };
 
@@ -208,10 +233,39 @@ export default function App() {
                   </div>
                 ))}
 
-                {/* El botón de Añadir Tarea Manual de la columna lo dejamos de momento como diseño estético */}
-                <button className="border-dashed border-2 border-gray-300 rounded-lg p-4 flex items-center justify-center gap-2 text-gray-500 font-semibold text-sm hover:border-seviai-red hover:text-seviai-red hover:bg-red-50 transition-all mt-2">
-                  <Plus className="w-4 h-4" /> Añadir Tarea Manual
-                </button>
+                {/* Botón / Input para añadir nueva tarea a la columna manualmente */}
+                {addingTaskTo === proyecto ? (
+                  <div className="flex items-center gap-2 mt-2 bg-white p-3 rounded-lg border border-seviai-red shadow-sm">
+                    <input
+                      type="text"
+                      autoFocus
+                      placeholder="Nombre de la tarea..."
+                      value={newTaskName}
+                      onChange={(e) => setNewTaskName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleCreateTask(proyecto);
+                        } else if (e.key === 'Escape') {
+                          setAddingTaskTo(null);
+                          setNewTaskName("");
+                        }
+                      }}
+                      className="flex-1 text-sm bg-gray-50 border border-gray-200 rounded px-2 py-2 outline-none focus:border-seviai-red focus:ring-1 focus:ring-seviai-red"
+                      disabled={isAddingTask}
+                    />
+                    {isAddingTask && <Loader2 className="w-4 h-4 text-seviai-red animate-spin" />}
+                  </div>
+                ) : (
+                  <button 
+                    onClick={() => {
+                      setAddingTaskTo(proyecto);
+                      setNewTaskName("");
+                    }}
+                    className="border-dashed border-2 border-gray-300 rounded-lg p-4 flex items-center justify-center gap-2 text-gray-500 font-semibold text-sm hover:border-seviai-red hover:text-seviai-red hover:bg-red-50 transition-all mt-2"
+                  >
+                    <Plus className="w-4 h-4" /> Añadir Tarea Manual
+                  </button>
+                )}
               </div>
             </div>
           );
