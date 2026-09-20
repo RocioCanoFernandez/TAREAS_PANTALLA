@@ -117,3 +117,27 @@ export async function createSubtareaManual(tareaId: string, nombre: string) {
     throw new Error("Error al crear la subtarea");
   }
 }
+
+export async function createTareaManual(nombre: string, proyecto: string) {
+  const body = {
+    records: [
+      {
+        fields: {
+          Name: nombre,
+          Proyecto: proyecto,
+          Estado: "Pendiente"
+        }
+      }
+    ]
+  };
+
+  const res = await fetch(`${URL}/Tarea`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body)
+  });
+  
+  if (!res.ok) {
+    throw new Error("Error al crear la tarea principal");
+  }
+}
