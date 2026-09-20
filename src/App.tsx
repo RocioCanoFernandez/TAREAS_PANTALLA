@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Mic, CheckSquare, Square, Plus, Loader2 } from 'lucide-react';
-import { fetchBoardData, toggleSubtarea, createSubtareaManual, createTareaManual } from './lib/airtable';
+import { Mic, CheckSquare, Square, Plus, Loader2, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
+import { fetchBoardData, toggleSubtarea, createSubtareaManual, createTareaManual, archiveTarea, deleteSubtarea, updateOrdenTareas } from './lib/airtable';
 import type { Tarea } from './lib/airtable';
 
 export default function App() {
@@ -35,6 +35,40 @@ export default function App() {
     setLoading(false);
   };
 
+  const handleMoveTask = async (tareaId: string, direction: 'up' | 'down') => {
+    const task = tareas.find(t => t.id === tareaId);
+    if (!task) return;
+
+    const colTasks = tareas.filter(t => t.proyecto === task.proyecto);
+    const colIndex = colTasks.findIndex(t => t.id === tareaId);
+
+    if (direction === 'up' && colIndex === 0) return;
+    if (direction === 'down' && colIndex === colTasks.length - 1) return;
+
+    const targetColIndex = direction === 'up' ? colIndex - 1 : colIndex + 1;
+    
+    const newColTasks = [...colTasks];
+    [newColTasks[colIndex], newColTasks[targetColIndex]] = [newColTasks[targetColIndex], newColTasks[colIndex]];
+    
+    const updates = newColTasks.map((t, i) => ({ id: t.id, orden: i + 1 }));
+
+    setTareas(prev => {
+      const next = [...prev];
+      return next.map(t => {
+        const update = updates.find(u => u.id === t.id);
+        if (update) return { ...t, orden: update.orden };
+        return t;
+      }).sort((a, b) => a.orden - b.orden);
+    });
+
+    try {
+      await updateOrdenTareas(updates);
+    } catch (err) {
+      console.error(err);
+      await cargarDatos(); // Revert on failure
+    }
+  };
+
   const handleToggleSubtarea = async (tareaId: string, subId: string, actualEstado: boolean) => {
     setTareas(prev => prev.map(t => {
       if (t.id === tareaId) {
@@ -46,6 +80,36 @@ export default function App() {
       return t;
     }));
     await toggleSubtarea(subId, !actualEstado);
+  };
+
+  const handleArchiveTask = async (tareaId: string) => {
+    if (!window.confirm("¿Seguro que quieres borrar esta tarea? (Se ocultará aquí pero se mantendrá archivada en Airtable)")) return;
+    setTareas(prev => prev.filter(t => t.id !== tareaId));
+    try {
+      await archiveTarea(tareaId);
+    } catch (err) {
+      console.error(err);
+      alert("Error al borrar. Se volverá a mostrar.");
+      await cargarDatos();
+    }
+  };
+
+  const handleDeleteSubtask = async (tareaId: string, subId: string) => {
+    setTareas(prev => prev.map(t => {
+      if (t.id === tareaId) {
+        return {
+          ...t,
+          subtareas: t.subtareas.filter(s => s.id !== subId)
+        };
+      }
+      return t;
+    }));
+    try {
+      await deleteSubtarea(subId);
+    } catch (err) {
+      console.error(err);
+      await cargarDatos();
+    }
   };
 
   const handleCreateSubtask = async (tareaId: string) => {
@@ -174,23 +238,59 @@ export default function App() {
               </div>
               
               <div className="p-4 flex-1 overflow-y-auto flex flex-col gap-4 bg-[#F8F9FA]">
-                {tareasProyecto.map((tarea) => (
+                {tareasProyecto.map((tarea, index) => (
                   <div key={tarea.id} className="group bg-white border-t-4 border-t-seviai-red rounded-b-lg shadow-sm hover:shadow-md transition-all p-4">
-                    <h3 className="font-semibold text-gray-900 mb-3 text-base">{tarea.nombre}</h3>
+                    <div className="flex justify-between items-start mb-3">
+                      <h3 className="font-semibold text-gray-900 text-base">{tarea.nombre}</h3>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => handleMoveTask(tarea.id, 'up')}
+                          disabled={index === 0}
+                          className="text-gray-300 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed p-1 rounded hover:bg-gray-100"
+                          title="Subir prioridad"
+                        >
+                          <ArrowUp className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleMoveTask(tarea.id, 'down')}
+                          disabled={index === tareasProyecto.length - 1}
+                          className="text-gray-300 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed p-1 rounded hover:bg-gray-100"
+                          title="Bajar prioridad"
+                        >
+                          <ArrowDown className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleArchiveTask(tarea.id)}
+                          className="text-gray-300 hover:text-red-500 transition-colors p-1 rounded hover:bg-red-50 ml-1"
+                          title="Borrar tarea"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
                     
                     {tarea.subtareas.length > 0 && (
                       <div className="space-y-2 mt-3 pt-3 border-t border-gray-100">
                         {tarea.subtareas.map((sub) => (
-                          <label key={sub.id} onClick={(e) => { e.preventDefault(); handleToggleSubtarea(tarea.id, sub.id, sub.completada); }} className="flex items-start gap-3 text-sm text-gray-600 cursor-pointer hover:text-black group-hover:bg-gray-50 p-1 rounded transition-colors">
-                            <div className="mt-0.5">
-                              {sub.completada ? (
-                                <CheckSquare className="w-4 h-4 text-seviai-red" />
-                              ) : (
-                                <Square className="w-4 h-4 text-gray-300" />
-                              )}
-                            </div>
-                            <span className={`leading-snug ${sub.completada ? "line-through text-gray-400" : ""}`}>{sub.nombre}</span>
-                          </label>
+                          <div key={sub.id} className="flex items-start justify-between group/subtask p-1 hover:bg-gray-50 rounded transition-colors">
+                            <label onClick={(e) => { e.preventDefault(); handleToggleSubtarea(tarea.id, sub.id, sub.completada); }} className="flex items-start gap-3 text-sm text-gray-600 cursor-pointer hover:text-black flex-1">
+                              <div className="mt-0.5">
+                                {sub.completada ? (
+                                  <CheckSquare className="w-4 h-4 text-seviai-red" />
+                                ) : (
+                                  <Square className="w-4 h-4 text-gray-300" />
+                                )}
+                              </div>
+                              <span className={`leading-snug ${sub.completada ? "line-through text-gray-400" : ""}`}>{sub.nombre}</span>
+                            </label>
+                            <button 
+                              onClick={() => handleDeleteSubtask(tarea.id, sub.id)}
+                              className="text-gray-300 hover:text-red-500 opacity-0 group-hover/subtask:opacity-100 transition-opacity ml-2 p-0.5"
+                              title="Borrar subtarea"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         ))}
                       </div>
                     )}

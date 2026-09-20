@@ -19,6 +19,7 @@ export interface Tarea {
   nombre: string;
   proyecto: string;
   estado: string;
+  orden: number;
   subtareas: Subtarea[];
 }
 
@@ -39,11 +40,16 @@ export async function fetchBoardData(): Promise<Tarea[]> {
 
     // Procesar Tareas
     tareasJson.records.forEach((t: any) => {
+      const estado = t.fields.Estado || 'Pendiente';
+      // Filtramos visualmente las tareas que han sido archivadas
+      if (estado === 'Archivada') return;
+
       const tarea: Tarea = {
         id: t.id,
         nombre: t.fields.Name || 'Sin título',
         proyecto: t.fields.Proyecto || 'Empresarias SeviAI',
-        estado: t.fields.Estado || 'Pendiente',
+        estado: estado,
+        orden: t.fields.Orden ? Number(t.fields.Orden) : 0,
         subtareas: []
       };
       tareasMap[tarea.id] = tarea;
@@ -65,7 +71,8 @@ export async function fetchBoardData(): Promise<Tarea[]> {
       });
     }
 
-    return tareas;
+    // Ordenar tareas por su campo Orden
+    return tareas.sort((a, b) => a.orden - b.orden);
   } catch (error) {
     console.error("Error cargando Airtable:", error);
     return [];
@@ -139,5 +146,26 @@ export async function createTareaManual(nombre: string, proyecto: string) {
   
   if (!res.ok) {
     throw new Error("Error al crear la tarea principal");
+  }
+}
+
+export async function archiveTarea(tareaId: string) {
+  const body = { records: [{ id: tareaId, fields: { Estado: 'Archivada' } }] };
+  const res = await fetch(${URL}/Tarea, { method: 'PATCH', headers, body: JSON.stringify(body) });
+  if (!res.ok) throw new Error('Error al archivar la tarea');
+}
+
+export async function deleteSubtarea(subtareaId: string) {
+  const res = await fetch(${URL}/Subtarea?records[]=, { method: 'DELETE', headers: { Authorization: "Bearer " } });
+  if (!res.ok) throw new Error('Error al eliminar');
+}
+
+export async function updateOrdenTareas(updates: {id: string, orden: number}[]) {
+  for (let i = 0; i < updates.length; i += 10) {
+    const chunk = updates.slice(i, i + 10);
+    const body = {
+      records: chunk.map(u => ({ id: u.id, fields: { Orden: u.orden } }))
+    };
+    await fetch(${URL}/Tarea, { method: 'PATCH', headers, body: JSON.stringify(body) });
   }
 }
