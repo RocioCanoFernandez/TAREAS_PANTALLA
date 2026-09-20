@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Mic, CheckSquare, Square, Plus, Loader2 } from 'lucide-react';
-import { fetchBoardData, toggleSubtarea } from './lib/airtable';
+import { fetchBoardData, toggleSubtarea, createSubtareaManual } from './lib/airtable';
 import type { Tarea } from './lib/airtable';
 
 export default function App() {
@@ -8,6 +8,11 @@ export default function App() {
   const [isSending, setIsSending] = useState(false);
   const [tareas, setTareas] = useState<Tarea[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Estado para la creación manual de subtareas
+  const [addingSubtaskTo, setAddingSubtaskTo] = useState<string | null>(null);
+  const [newSubtaskName, setNewSubtaskName] = useState("");
+  const [isAddingSubtask, setIsAddingSubtask] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
@@ -35,6 +40,25 @@ export default function App() {
       return t;
     }));
     await toggleSubtarea(subId, !actualEstado);
+  };
+
+  const handleCreateSubtask = async (tareaId: string) => {
+    if (!newSubtaskName.trim()) {
+      setAddingSubtaskTo(null);
+      return;
+    }
+    setIsAddingSubtask(true);
+    try {
+      await createSubtareaManual(tareaId, newSubtaskName);
+      setNewSubtaskName("");
+      setAddingSubtaskTo(null);
+      await cargarDatos();
+    } catch (err) {
+      console.error(err);
+      alert("Error al crear la subtarea. Revisa tu conexión a Airtable.");
+    } finally {
+      setIsAddingSubtask(false);
+    }
   };
 
   const toggleGrabacion = async () => {
@@ -145,9 +169,46 @@ export default function App() {
                         ))}
                       </div>
                     )}
+                    
+                    {/* Botón / Input para añadir nueva subtarea manualmente */}
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      {addingSubtaskTo === tarea.id ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            autoFocus
+                            placeholder="Escribe la subtarea y pulsa Intro..."
+                            value={newSubtaskName}
+                            onChange={(e) => setNewSubtaskName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleCreateSubtask(tarea.id);
+                              } else if (e.key === 'Escape') {
+                                setAddingSubtaskTo(null);
+                                setNewSubtaskName("");
+                              }
+                            }}
+                            className="flex-1 text-sm bg-gray-50 border border-gray-200 rounded px-2 py-1 outline-none focus:border-seviai-red focus:ring-1 focus:ring-seviai-red"
+                            disabled={isAddingSubtask}
+                          />
+                          {isAddingSubtask && <Loader2 className="w-4 h-4 text-seviai-red animate-spin" />}
+                        </div>
+                      ) : (
+                        <button 
+                          onClick={() => {
+                            setAddingSubtaskTo(tarea.id);
+                            setNewSubtaskName("");
+                          }}
+                          className="flex items-center gap-1 text-xs font-semibold text-gray-400 hover:text-seviai-red transition-colors"
+                        >
+                          <Plus className="w-3 h-3" /> Añadir subtarea
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
 
+                {/* El botón de Añadir Tarea Manual de la columna lo dejamos de momento como diseño estético */}
                 <button className="border-dashed border-2 border-gray-300 rounded-lg p-4 flex items-center justify-center gap-2 text-gray-500 font-semibold text-sm hover:border-seviai-red hover:text-seviai-red hover:bg-red-50 transition-all mt-2">
                   <Plus className="w-4 h-4" /> Añadir Tarea Manual
                 </button>
