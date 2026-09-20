@@ -11,7 +11,7 @@ export default function App() {
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
-  const proyectos = ['Empresarias SeviAI', '360CORE', 'GobernaIA'];
+  const proyectos = ['EMPRESARIAS', '360 CORE', 'APP GobernaIA'];
 
   useEffect(() => {
     cargarDatos();
