@@ -151,12 +151,12 @@ export async function createTareaManual(nombre: string, proyecto: string) {
 
 export async function archiveTarea(tareaId: string) {
   const body = { records: [{ id: tareaId, fields: { Estado: 'Archivada' } }] };
-  const res = await fetch(${URL}/Tarea, { method: 'PATCH', headers, body: JSON.stringify(body) });
+  const res = await fetch(`${URL}/Tarea`, { method: 'PATCH', headers, body: JSON.stringify(body) });
   if (!res.ok) throw new Error('Error al archivar la tarea');
 }
 
 export async function deleteSubtarea(subtareaId: string) {
-  const res = await fetch(${URL}/Subtarea?records[]=, { method: 'DELETE', headers: { Authorization: "Bearer " } });
+  const res = await fetch(`${URL}/Subtarea?records[]=${subtareaId}`, { method: 'DELETE', headers });
   if (!res.ok) throw new Error('Error al eliminar');
 }
 
@@ -166,6 +166,6 @@ export async function updateOrdenTareas(updates: {id: string, orden: number}[]) 
     const body = {
       records: chunk.map(u => ({ id: u.id, fields: { Orden: u.orden } }))
     };
-    await fetch(${URL}/Tarea, { method: 'PATCH', headers, body: JSON.stringify(body) });
+    await fetch(`${URL}/Tarea`, { method: 'PATCH', headers, body: JSON.stringify(body) });
   }
 }
