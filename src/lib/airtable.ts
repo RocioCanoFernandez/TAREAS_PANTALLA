@@ -94,3 +94,26 @@ export async function toggleSubtarea(subtareaId: string, completada: boolean) {
     console.error("Error al actualizar la subtarea");
   }
 }
+
+export async function createSubtareaManual(tareaId: string, nombre: string) {
+  const body = {
+    records: [
+      {
+        fields: {
+          Name: nombre,
+          Tarea: [tareaId]
+        }
+      }
+    ]
+  };
+
+  const res = await fetch(`${URL}/Subtarea`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body)
+  });
+  
+  if (!res.ok) {
+    throw new Error("Error al crear la subtarea");
+  }
+}
